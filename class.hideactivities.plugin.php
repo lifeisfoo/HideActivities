@@ -64,7 +64,6 @@ class HideActivitiesPlugin extends Gdn_Plugin {
 		                ->Get();
 	}
 
-	  //hide activity
 	public function ProfileController_BeforeActivitiesList_Handler($Sender) {
 		if($this->_SessionUserID() && $this->_ProfilePageID($Sender)){
 			if($this->_SessionUserID() != $this->_ProfilePageID($Sender)){ //not in himself profile page
