@@ -21,7 +21,7 @@ along with HideActivities. If not, see <http://www.gnu.org/licenses/>.
 $PluginInfo['HideActivities'] = array(
 	'Name' => 'Hide Activities',
 	'Description' => 'Shows user activities (profile page) only to friends (from Friendships plugin)',
-	'Version' => '0.1',
+	'Version' => '0.2',
 	'RequiredApplications' => array('Vanilla' => '2.0.18.4'),
 	'RequiredTheme' => FALSE, 
 	'RequiredPlugins' => array('Friendships' => '0.1'),
@@ -64,6 +64,39 @@ class HideActivitiesPlugin extends Gdn_Plugin {
 		                ->Get();
 	}
 
+	private function _FriendsActivities(){
+		if(!Gdn::Session()->IsValid()){ //if guest
+			return $this->_EmptyActivities();
+		}else{ //friends activities
+			$FriendsIDs = $this->_FriendshipModel->FriendsIDs(Gdn::Session()->UserID);
+			return Gdn::SQL()
+				//from ActivityModel->ActivityQuery()
+				->Select('a.*')
+				->Select('t.FullHeadline, t.ProfileHeadline, t.AllowComments, t.ShowIcon, t.RouteCode')
+				->Select('t.Name', '', 'ActivityType')
+				->Select('au.Name', '', 'ActivityName')
+				->Select('au.Gender', '', 'ActivityGender')
+				->Select('au.Photo', '', 'ActivityPhoto')
+				->Select('au.Email', '', 'ActivityEmail')
+				->Select('ru.Name', '', 'RegardingName')
+				->Select('ru.Gender', '', 'RegardingGender')
+				->Select('ru.Email', '', 'RegardingEmail')
+				->Select('ru.Photo', '', 'RegardingPhoto')
+				->From('Activity a')
+				->Join('ActivityType t', 'a.ActivityTypeID = t.ActivityTypeID')
+				->Join('User au', 'a.ActivityUserID = au.UserID')
+				->Join('User ru', 'a.RegardingUserID = ru.UserID', 'left')
+				//from ActivityModel->Get()
+				->OrderBy('a.DateInserted', 'desc')
+				//includes only activity from friends
+				->WhereIn('a.ActivityUserID', $FriendsIDs)
+				->Where('t.Public', '1')
+				->Where('a.CommentActivityID is null')
+				->Limit(50)
+				->Get();
+		}
+	}
+
 	public function ProfileController_BeforeActivitiesList_Handler($Sender) {
 		if($this->_SessionUserID() && $this->_ProfilePageID($Sender)){
 			if($this->_SessionUserID() != $this->_ProfilePageID($Sender)){ //not in himself profile page
@@ -79,6 +112,10 @@ class HideActivitiesPlugin extends Gdn_Plugin {
 		}else{//guest
 			$Sender->ActivityData = $this->_EmptyActivities();
 		}
+	}
+
+	public function ActivityController_BeforeStatusForm_Handler($Sender) {
+		$Sender->ActivityData = $this->_FriendsActivities();
 	}
 
 	public function Setup() {}
