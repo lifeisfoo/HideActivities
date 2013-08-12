@@ -21,7 +21,7 @@ along with HideActivities. If not, see <http://www.gnu.org/licenses/>.
 $PluginInfo['HideActivities'] = array(
 	'Name' => 'Hide Activities',
 	'Description' => 'Shows user activities (profile page) only to friends (from Friendships plugin)',
-	'Version' => '0.2',
+	'Version' => '0.2.2',
 	'RequiredApplications' => array('Vanilla' => '2.0.18.4'),
 	'RequiredTheme' => FALSE, 
 	'RequiredPlugins' => array('Friendships' => '0.1'),
@@ -69,6 +69,7 @@ class HideActivitiesPlugin extends Gdn_Plugin {
 			return $this->_EmptyActivities();
 		}else{ //friends activities
 			$FriendsIDs = $this->_FriendshipModel->FriendsIDs(Gdn::Session()->UserID);
+			array_push($FriendsIDs, Gdn::Session()->UserID);
 			return Gdn::SQL()
 				//from ActivityModel->ActivityQuery()
 				->Select('a.*')
@@ -90,6 +91,7 @@ class HideActivitiesPlugin extends Gdn_Plugin {
 				->OrderBy('a.DateInserted', 'desc')
 				//includes only activity from friends
 				->WhereIn('a.ActivityUserID', $FriendsIDs)
+				->OrWhereIn('a.InsertUserID', $FriendsIDs)
 				->Where('t.Public', '1')
 				->Where('a.CommentActivityID is null')
 				->Limit(50)
@@ -103,6 +105,7 @@ class HideActivitiesPlugin extends Gdn_Plugin {
 				if(!$this->_FriendshipModel->FriendsFrom($this->_SessionUserID(), $this->_ProfilePageID($Sender))){
 					//they are not friends
 					$Sender->ActivityData = $this->_EmptyActivities();
+					$Sender->NotFriends = true;
 				}else{ //they are good friends
 					//do nothing
 				}
